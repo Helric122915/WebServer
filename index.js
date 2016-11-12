@@ -2,7 +2,7 @@ var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var bodyParser = require('body-parser');
-var port = 80
+var port = 3000
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true}));
@@ -18,7 +18,7 @@ app.get('/', function(request, response) {
   response.sendFile(__dirname + '/index.html');
 })
 
-app.get('/CurrentFanData', (request, response) => {
+app.get('/CurrentFanData', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
   
   var json = JSON.stringify({
@@ -43,7 +43,7 @@ io.on('connection', function(socket){
   });
 });
 
-app.listen(port, (err) => {
+app.listen(port, function(err) {
   if (err) {
     return console.log('something bad happened', err)
   }
