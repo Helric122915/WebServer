@@ -36,3 +36,15 @@ app.post('/UpdateFanData', function(request, response) {
   
   response.send('Success');
 });
+
+ip.on('connection', function(socket){
+  socket.on('chat message', function(msg){
+    io.emit('chat message', msg);
+  });
+});
+
+app.listen(port, (err) => {
+  if (err) {
+    return console.log('something bad happened', err)
+  }
+})
