@@ -34,5 +34,5 @@ app.post('/UpdateFanData', function(request, response) {
   
   data = new fanData(Room_Temp, Fan_Speed);
   
-  response.send("Success');
+  response.send('Success');
 });
