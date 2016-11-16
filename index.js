@@ -1,6 +1,5 @@
 var app = require('express')();
 var http = require('http').Server(app);
-var io = require('socket.io')(http);
 var bodyParser = require('body-parser');
 var port = 3000
 
@@ -13,10 +12,6 @@ function fanData(Room_Temp, Fan_Speed){
 }
 
 var data = new fanData("73", "3600");
-
-app.get('/', function(request, response) {
-  response.sendFile(__dirname + '/index.html');
-})
 
 app.get('/CurrentFanData', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
@@ -37,16 +32,9 @@ app.post('/UpdateFanData', function(request, response) {
   response.send('Success');
 });
 
-io.on('connection', function(socket){
-  socket.on('chat message', function(msg){
-    io.emit('chat message', msg);
-  });
-});
-
 app.listen(port, function(err) {
   if (err) {
     return console.log('something bad happened', err)
   }
-
   console.log('Listening on port: ' + port)
 })
