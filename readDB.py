@@ -13,3 +13,5 @@ print "============================================================"
 for reading in curs.fetchall():
   print str(reading[0]) + "	" + str(reading[1])+"		"+\
 		str(reading[2]) + "		" + str(reading[3])
+
+db.close()
