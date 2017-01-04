@@ -1,12 +1,21 @@
 // use "sudo fuser -k PORTNUM/tcp" to release the port if improperly exited
-
 var app = require('express')();
 var http = require('http').Server(app);
 var bodyParser = require('body-parser');
+var mysql = require('mysql');
 var port = 3000
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true}));
+
+var database = mysql.createConnection({
+  host : 'localhost',
+  user : 'monitor',
+  password : 'smartfan',
+  database : 'fandb'
+});
+
+database.connect();
 
 opMode = "Manual"
 
@@ -14,8 +23,6 @@ function ManualData(Manual_Direction, Manual_Fan_Speed){
   this.Manual_Direction = Manual_Direction;
   this.Manual_Fan_Speed = Manual_Fan_Speed;
 }
-
-var manualData = new ManualData("Clockwise", "33");
 
 function OneTempData(One_Temp_Direction, One_Temp_Low_Speed, One_Temp_Low_Temp, One_Temp_High_Speed, One_Temp_High_Temp){
   this.One_Temp_Direction = One_Temp_Direction
@@ -53,11 +60,15 @@ app.get('/GetOp', function(request, response) {
 app.get('/GetManual', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
 
-  var json = JSON.stringify({
-    data:manualData
-  });
+  database.query('SELECT direction, fanSpeed FROM ManualData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
+    var manualData = new ManualData(rows[0]['direction'],rows[0]['fanSpeed']);
+  
+    var json = JSON.stringify({
+      data:manualData
+    });
 
-  response.end(json);
+    response.end(json);
+  })
 })
 
 app.post('/PostManual', function(request,response) {
@@ -66,6 +77,12 @@ app.post('/PostManual', function(request,response) {
   
   if (typeof Manual_Direction !== 'undefined' && typeof Manual_Fan_Speed !== 'undefined')
   {
+     var sql = "REPLACE INTO ManualData (entry_id,direction,fanSpeed) VALUES(1,?,?)";
+     var inserts = [Manual_Direction,Manual_Fan_Speed];
+
+     sql = mysql.format(sql,inserts);
+     database.query(sql, function(err,rows,fields){});
+
      manualData = new ManualData(Manual_Direction, Manual_Fan_Speed);
      opMode = "Manual";
      response.send('Success');
@@ -148,32 +165,6 @@ app.post('/PostTwoTemp', function(request, response) {
     response.send('Error, data could not be parsed properly');
   }
 });
-
-//app.get('/CurrentFanData', function(request, response) {
-//  response.writeHead(200, {"Content-Type": "application/json"});
-  
-//  var json = JSON.stringify({
-//    data:data
-//  });
-  
-//  response.end(json);
-//})
-
-//app.post('/UpdateFanData', function(request, response) {
-//  var Op_Mode = request.body.Op_Mode
-//  var Direction = request.body.Direction;
-//  var Manual_Fan_Speed = request.body.Manual_Fan_Speed;
-  
-//  if (typeof Op_Mode !== 'undefined' && typeof Direction !== 'undefined' && typeof Manual_Fan_Speed !== 'undefined')
-//  {
-//    data = new fanData(Op_Mode, Direction, Manual_Fan_Speed);
-//    response.send('Success');
-//  }
-// else
-//  {
-//    response.send('Error, data could not be parsed properly');
-//  }
-//});
 
 app.listen(port, function(err) {
   if (err) {
