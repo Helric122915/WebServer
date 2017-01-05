@@ -73,10 +73,8 @@ app.post('/PostOp', function(request,response) {
     });
   }
   else
-  {
     response.send('Error, data could not be parsed properly');
-  }
-}
+})
 
 app.get('/GetManual', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
@@ -111,9 +109,7 @@ app.post('/PostManual', function(request,response) {
      });
   }
   else
-  {
      response.send('Error, data could not be parsed properly');
-  }
 });
 
 app.get('/GetSchedule', function(request, response) {
@@ -138,7 +134,7 @@ app.get('/GetOneTemp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
   
   database.query('SELECT direction,lowSpeed,lowTemp,highSpeed,highTemp FROM OneTempData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
-    var oneTempData = new OneTempData(rows[0]['direction'],rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp'];
+    var oneTempData = new OneTempData(rows[0]['direction'],rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp']);
     
     var json = JSON.stringify({
       data:oneTempData
@@ -170,16 +166,14 @@ app.post('/PostOneTemp', function(request, response) {
     });
   }
   else
-  {
     response.send('Error, data could not be parsed properly');
-  }
 });
 
 app.get('/GetTwoTemp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
 
   database.query('SELECT lowSpeed,lowTemp,highSpeed,highTemp FROM TwoTempData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
-    var twoTempData = new TwoTempData(rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp'];
+    var twoTempData = new TwoTempData(rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp']);
     
     var json = JSON.stringify({
       data:twoTempData
@@ -210,9 +204,7 @@ app.post('/PostTwoTemp', function(request, response) {
     });
   }
   else
-  {
     response.send('Error, data could not be parsed properly');
-  }
 });
 
 app.listen(port, function(err) {
