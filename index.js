@@ -22,6 +22,16 @@ function ManualData(Manual_Direction, Manual_Fan_Speed){
   this.Manual_Fan_Speed = Manual_Fan_Speed;
 }
 
+function ScheduleData(Schedule_ID, Begin_Time, End_Time, Direction, Fan_Speed, Day, Enabled){
+  this.Schedule_ID = Schedule_ID;
+  this.Begin_Time = Begin_Time;
+  this.End_Time = End_Time;
+  this.Direction = Direction;
+  this.Fan_Speed = Fan_Speed;
+  this.Day = Day;
+  this.Enabled = Enabled;
+}
+
 function OneTempData(One_Temp_Direction, One_Temp_Low_Speed, One_Temp_Low_Temp, One_Temp_High_Speed, One_Temp_High_Temp){
   this.One_Temp_Direction = One_Temp_Direction
   this.One_Temp_Low_Speed = One_Temp_Low_Speed
@@ -69,7 +79,7 @@ app.post('/PostOp', function(request,response) {
       if(!err)
         response.send('Success');
       else
-        response.send('Database error');
+        response.send('Database error: ' + err);
     });
   }
   else
@@ -105,7 +115,7 @@ app.post('/PostManual', function(request,response) {
        if(!err)
          response.send('Success');
        else
-         response.send('Database error');
+         response.send('Database error: ' + err);
      });
   }
   else
@@ -122,13 +132,19 @@ app.get('/GetSchedule', function(request, response) {
   response.end(json);
 })
 
-app.post('/PostSchedule', function(request, response) {
-  // define variables
+app.post('/CreateSchedule', function(request, response){
+  // get fields
 
-  // if (variables are defined)
-  // update schedule class and send success
-  // else send failure
-});
+  // if fields are defined
+  // query db to insert into
+})
+
+app.post('/DeleteSchedule', function(request, response){
+  // get fields
+  
+  // if fields are defined
+  // query db to delete from
+})
 
 app.get('/GetOneTemp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
@@ -162,7 +178,7 @@ app.post('/PostOneTemp', function(request, response) {
       if(!err)
         response.send('Success');
       else
-        response.send('Database Error');
+        response.send('Database Error: ' + err);
     });
   }
   else
@@ -200,7 +216,7 @@ app.post('/PostTwoTemp', function(request, response) {
       if(!err)
         response.send('Success');
       else
-        response.send('Database error');
+        response.send('Database error: ' + err);
     });
   }
   else
@@ -208,8 +224,7 @@ app.post('/PostTwoTemp', function(request, response) {
 });
 
 app.listen(port, function(err) {
-  if (err) {
+  if (err)
     return console.log('something bad happened', err)
-  }
   console.log('Listening on port: ' + port)
 })
