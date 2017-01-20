@@ -13,7 +13,7 @@ var database = mysql.createConnection({
   user : 'monitor',
   password : 'smartfan',
   database : 'fandb'
-});
+})
 
 database.connect();
 
@@ -120,7 +120,7 @@ app.post('/PostManual', function(request,response) {
   }
   else
      response.send('Error, data could not be parsed properly');
-});
+})
 
 app.get('/GetSchedule', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
@@ -133,17 +133,57 @@ app.get('/GetSchedule', function(request, response) {
 })
 
 app.post('/CreateSchedule', function(request, response){
-  // get fields
+  var Schedule_Id = request.body.Schedule_Id;
+  var Begin_Time = request.body.Begin_Time;
+  var End_Time = request.body.End_Time;
+  var Direction = request.body.Direction;
+  var Fan_Speed = request.body.Fan_Speed;
+  var Day = request.body.Day;
+  var Enabled = request.body.Enabled;
 
-  // if fields are defined
-  // query db to insert into
+  if (typeof Schedule_Id !== 'undefined && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
+  {
+    var sql = "Fill in query!!!!";
+    var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Day,Enabled];
+
+    sql = mysql.format(sql,inserts);
+    database.query(sql, function(err,rows,fields)
+    {
+      if(!err)
+        response.send('Success');
+      else
+        response.send('Database Error: ' + err);
+    });
+  }
+  else
+    response.send('Error, data could not be parse properly');  
 })
 
 app.post('/DeleteSchedule', function(request, response){
-  // get fields
-  
-  // if fields are defined
-  // query db to delete from
+  var Schedule_Id = request.body.Schedule_Id;
+  var Begin_Time = request.body.Begin_Time;
+  var End_Time = request.body.End_Time;
+  var Direction = request.body.Direction;
+  var Fan_Speed = request.body.Fan_Speed;
+  var Day = request.body.Day;
+  var Enabled = request.body.Enabled;
+
+  if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
+  {
+    var sql = "Fill in query!!!";
+    var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Day,Enabled];
+
+    sql = mysql.format(sql,inserts);
+    database.query(sql, function(err,rows,fields)
+    {
+      if(!err)
+        response.send('Success');
+      else
+        response.send('Database Error: ' + err);
+    });
+  }  
+  else
+    response.send('Error, data could not be parsed properly');
 })
 
 app.get('/GetOneTemp', function(request, response) {
@@ -183,7 +223,7 @@ app.post('/PostOneTemp', function(request, response) {
   }
   else
     response.send('Error, data could not be parsed properly');
-});
+})
 
 app.get('/GetTwoTemp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
@@ -221,7 +261,7 @@ app.post('/PostTwoTemp', function(request, response) {
   }
   else
     response.send('Error, data could not be parsed properly');
-});
+})
 
 app.listen(port, function(err) {
   if (err)
