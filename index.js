@@ -17,6 +17,16 @@ var database = mysql.createConnection({
 
 database.connect();
 
+var weekdays = {
+    Sunday: 0,
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6
+};
+
 function OpMode(Mode){
   this.Mode = Mode
 }
@@ -138,16 +148,16 @@ app.get('/GetSchedule', function(request, response) {
 
 app.get('/GetCurrentDaySchedule', function(request, response) {
   var d = new Date();
-  var weekday = new Array(7);
-  weekday[0] = "Sunday";
-  weekday[1] = "Monday";
-  weekday[2] = "Tuesday";
-  weekday[3] = "Wednesday";
-  weekday[4] = "Thursday";
-  weekday[5] = "Friday";
-  weekday[6] = "Satruday";
+  //var weekday = new Array(7);
+  //weekday[0] = "Sunday";
+  //weekday[1] = "Monday";
+  //weekday[2] = "Tuesday";
+  //weekday[3] = "Wednesday";
+  //weekday[4] = "Thursday";
+  //weekday[5] = "Friday";
+  //weekday[6] = "Satruday";
 
-  var currentDay = weekday[d.getDay()];
+  var currentDay = weekdays[d.getDay()];
   var currentTime = d.getHours().toString() + ":" + d.getMinutes().toString() + ":" + d.getSeconds().toString();
   
   console.log(currentDay + " " + currentTime);
@@ -166,36 +176,40 @@ app.post('/CreateSchedule', function(request, response){
 
   if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
   {
-    if (Day.charAt(0) == "Y")
-    {
-      var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,"Sunday",?)";
-      var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Enabled];
-
-      sql = mysql.format(sql,inserts);
-      database.query(sql, function(err,rows,fields)
-      {
-        if(err)
+    for (i = 0; i < Day.length; i++) { 
+      if (Day.charAt(i) == "Y"){
+        var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,weekdays[i],?)";
+        var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Enabled];
+      
+        sql = mysql.format(sql,inserts);
+        database.query(sql, function(err,rows,fields)
         {
-          response.send('Database Error: ' + err);
-          success = false;
+          if(err)
+          {
+            response.send('Database Error: ' + err);
+            success = false;
+          }
         }
       }
     }
-    
+                     
     //var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES(?,?,?,?,?,?,?)";
-    var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Day,Enabled];
+    //var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Day,Enabled];
 
-    sql = mysql.format(sql,inserts);
-    database.query(sql, function(err,rows,fields)
-    {
-      if(!err)
-        response.send('Success');
-      else
-        response.send('Database Error: ' + err);
-    });
-  }
+    //sql = mysql.format(sql,inserts);
+    //database.query(sql, function(err,rows,fields)
+    //{
+    //  if(!err)
+    //    response.send('Success');
+    //  else
+    //    response.send('Database Error: ' + err);
+    //});
+  //}
   else
-    response.send('Error, data could not be parse properly');  
+    response.send('Error, data could not be parse properly');
+        
+  if (!success)
+    response.send('There was at least one Database Error.');
 })
 
 app.post('/DeleteSchedule', function(request, response){
