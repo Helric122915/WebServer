@@ -17,15 +17,14 @@ var database = mysql.createConnection({
 
 database.connect();
 
-var weekdays = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6
-};
+var weekday = new Array(7);
+weekday[0] = "Sunday";
+weekday[1] = "Monday";
+weekday[2] = "Tuesday";
+weekday[3] = "Wednesday";
+weekday[4] = "Thursday";
+weekday[5] = "Friday";
+weekday[6] = "Saturday";
 
 function OpMode(Mode){
   this.Mode = Mode
@@ -44,6 +43,13 @@ function ScheduleData(Schedule_ID, Begin_Time, End_Time, Direction, Fan_Speed, D
   this.Fan_Speed = Fan_Speed;
   this.Day = Day;
   this.Enabled = Enabled;
+}
+
+function DayScheduleData(Begin_Time, End_Time, Direction, Fan_Speed){
+  this.Begin_Time = Begin_Time;
+  this.End_Time = End_Time;
+  this.Direction = Direction;
+  this.Fan_Speed = Fan_Speed;
 }
 
 function OneTempData(One_Temp_Direction, One_Temp_Low_Speed, One_Temp_Low_Temp, One_Temp_High_Speed, One_Temp_High_Temp){
@@ -147,19 +153,20 @@ app.get('/GetSchedule', function(request, response) {
 })
 
 app.get('/GetCurrentDaySchedule', function(request, response) {
-  var d = new Date();
-  //var weekday = new Array(7);
-  //weekday[0] = "Sunday";
-  //weekday[1] = "Monday";
-  //weekday[2] = "Tuesday";
-  //weekday[3] = "Wednesday";
-  //weekday[4] = "Thursday";
-  //weekday[5] = "Friday";
-  //weekday[6] = "Satruday";
+  response.writeHead(200, {"Content-Type": "application/json"});  
 
-  var currentDay = weekdays[d.getDay()];
+  var d = new Date();
+  var currentDay = weekday[d.getDay()];
   var currentTime = d.getHours().toString() + ":" + d.getMinutes().toString() + ":" + d.getSeconds().toString();
   
+  database.query('SELECT beginTime,endTime,direction,fanSpeed FROM ScheduleData WHERE Day = currentDay AND Enabled = "Yes"  AND beginTime < currentTime AND endTime > currentTime LIMIT 1", function(err,rows,fields){
+    var scheduleData = new DayScheduleData(rows[0]['beginTime'],rows[0]['endTime'],rows[0]['direction'],rows[0]['fanSpeed']);
+
+    var json = JSON.stringify({
+      data:scheduleData
+    }); 
+  }
+
   console.log(currentDay + " " + currentTime);
 })
 
@@ -178,7 +185,7 @@ app.post('/CreateSchedule', function(request, response){
   {
     for (i = 0; i < Day.length; i++) { 
       if (Day.charAt(i) == "Y"){
-        var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,weekdays[i],?)";
+        var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,weekday[i],?)";
         var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Enabled];
       
         sql = mysql.format(sql,inserts);
@@ -192,18 +199,6 @@ app.post('/CreateSchedule', function(request, response){
         });
       }
     }
-                     
-    //var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES(?,?,?,?,?,?,?)";
-    //var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Day,Enabled];
-
-    //sql = mysql.format(sql,inserts);
-    //database.query(sql, function(err,rows,fields)
-    //{
-    //  if(!err)
-    //    response.send('Success');
-    //  else
-    //    response.send('Database Error: ' + err);
-    //});
   }
   else
     response.send('Error, data could not be parse properly');
@@ -214,18 +209,11 @@ app.post('/CreateSchedule', function(request, response){
 
 app.post('/DeleteSchedule', function(request, response){
   var Schedule_Id = request.body.Schedule_Id;
-  var Begin_Time = request.body.Begin_Time;
-  var End_Time = request.body.End_Time;
-  var Direction = request.body.Direction;
-  var Fan_Speed = request.body.Fan_Speed;
-  var Day = request.body.Day;
-  var Enabled = request.body.Enabled;
 
   if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
   {
     var sql = "DELETE FROM ScheduleData WHERE schedule_id = ?";
-    //var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Day,Enabled];
-    var inserts = [schedule_id];
+    var inserts = [Schedule_Id];
 
     sql = mysql.format(sql,inserts);
     database.query(sql, function(err,rows,fields)
