@@ -17,6 +17,10 @@ var database = mysql.createConnection({
 
 database.connect();
 
+function OpMode(Mode){
+  this.Mode = Mode
+}
+
 function ManualData(Manual_Direction, Manual_Fan_Speed){
   this.Manual_Direction = Manual_Direction;
   this.Manual_Fan_Speed = Manual_Fan_Speed;
@@ -47,15 +51,15 @@ function TwoTempData(Two_Temp_Low_Speed, Two_Temp_Low_Temp, Two_Temp_High_Speed,
   this.Two_Temp_High_Temp = Two_Temp_High_Temp
 }
 
-//app.get('/', function(request, response) {
-//  response.sendFile(__dirname + '/test.html');
-//})
+app.get('/', function(request, response) {
+  response.sendFile(__dirname + '/index.html');
+})
 
 app.get('/GetOp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
   
   database.query('SELECT mode FROM OpData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
-    opMode = rows[0]['mode'];
+    var opMode = new OpMode(rows[0]['mode']);
 
     var json = JSON.stringify({
       data:opMode
@@ -66,7 +70,7 @@ app.get('/GetOp', function(request, response) {
 })
 
 app.post('/PostOp', function(request,response) {
-  var opMode = request.body.data;
+  var opMode = request.body.Mode;
 
   if (typeof opMode !== 'undefined')
   {
@@ -141,7 +145,7 @@ app.post('/CreateSchedule', function(request, response){
   var Day = request.body.Day;
   var Enabled = request.body.Enabled;
 
-  if (typeof Schedule_Id !== 'undefined && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
+  if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
   {
     var sql = "Fill in query!!!!";
     var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Day,Enabled];
