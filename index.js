@@ -204,7 +204,7 @@ app.post('/CreateSchedule', function(request, response){
     //  else
     //    response.send('Database Error: ' + err);
     //});
-  //}
+  }
   else
     response.send('Error, data could not be parse properly');
         
