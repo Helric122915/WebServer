@@ -189,7 +189,7 @@ app.post('/CreateSchedule', function(request, response){
             response.send('Database Error: ' + err);
             success = false;
           }
-        }
+        });
       }
     }
                      
