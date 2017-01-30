@@ -30,6 +30,12 @@ function OpMode(Mode){
   this.Mode = Mode
 }
 
+function LocationData(Address, Latitude, Longitude){
+  this.Address = Address;
+  this.Latitude = Latitude;
+  this.Longitude = Longitude;
+}
+
 function ManualData(Manual_Direction, Manual_Fan_Speed){
   this.Manual_Direction = Manual_Direction;
   this.Manual_Fan_Speed = Manual_Fan_Speed;
@@ -45,7 +51,7 @@ function ScheduleData(Schedule_ID, Begin_Time, End_Time, Direction, Fan_Speed, D
   this.Enabled = Enabled;
 }
 
-function DayScheduleData(Begin_Time, End_Time, Direction, Fan_Speed){
+function CurrentScheduleData(Begin_Time, End_Time, Direction, Fan_Speed){
   this.Begin_Time = Begin_Time;
   this.End_Time = End_Time;
   this.Direction = Direction;
@@ -75,27 +81,29 @@ app.get('/GetOp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
   
   database.query('SELECT mode FROM OpData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
-    var opMode = new OpMode(rows[0]['mode']);
+    if (typeof rows !== 'undefined' && rows.length > 0) {
+      var opMode = new OpMode(rows[0]['mode']);
 
-    var json = JSON.stringify({
-      data:opMode
-    });
+      var json = JSON.stringify({
+        data:opMode
+      });
 
-    response.end(json);
+      response.end(json);
+    }
+    else
+      response.end('Error, no results from Database.');
   })
 })
 
 app.post('/PostOp', function(request,response) {
   var opMode = request.body.Mode;
 
-  if (typeof opMode !== 'undefined')
-  {
+  if (typeof opMode !== 'undefined') {
     var sql = "REPLACE INTO OpData (entry_id, mode) VALUES(1,?)";
     var inserts = [opMode];
 
     sql = mysql.format(sql, inserts);
-    database.query(sql, function(err,rows,fields)
-    {
+    database.query(sql, function(err,rows,fields) {
       if(!err)
         response.send('Success');
       else
@@ -106,17 +114,58 @@ app.post('/PostOp', function(request,response) {
     response.send('Error, data could not be parsed properly');
 })
 
+app.get('/GetAddress', function(request, response) {
+  response.writeHead(200, {"Content-Type": "application/json"});
+
+  database.query('SELECT address, latitude, longitude FROM AddressData WHERE entry_id=1 LIMIT 1', function(err,rows,fields) {
+    if (typeof rows !== 'undefined' && rows.length > 0) {
+       var locationData = new LocationData(rows[0]['address'],rows[0]['latitude'],rows[0]['longitude']);
+       
+       var json = JSON.stringify({
+         data:locationData
+       });
+    
+       response.end(json);
+    }
+    else
+      response.end('Error, no results from Database.');
+  })
+})
+
+app.post('/PostAddress', function(request, response) {
+  var Address = request.body.Address;
+  var Latitude = request.body.Latitude;
+  var Longitude = request.body.Longitude;
+
+  if (typeof Address !== 'undefined' && typeof Latitude !== 'undefined' && typeof Longitude !== 'undefined') {
+    var sql = "REPLACE INTO AddressData (entry_id,address,latitude,longitude) VALUES(1,?,?,?)";
+    var inserts = [Address,Latitude,Longitude];
+
+    sql = mysql.format(sql,inserts);
+    database.query(sql, function(err,rows,fields) {
+      if(!err)
+        response.send('Success');
+      else
+        response.send('Database error: ' + err);
+    });
+  }
+})
+
 app.get('/GetManual', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
 
-  database.query('SELECT direction, fanSpeed FROM ManualData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
-    var manualData = new ManualData(rows[0]['direction'],rows[0]['fanSpeed']);
+  database.query('SELECT direction, fanSpeed FROM ManualData WHERE entry_id=1 LIMIT 1', function(err,rows,fields) {
+    if (typeof rows !== 'undefined' && rows.length > 0) {
+      var manualData = new ManualData(rows[0]['direction'],rows[0]['fanSpeed']);
   
-    var json = JSON.stringify({
-      data:manualData
-    });
+      var json = JSON.stringify({
+        data:manualData
+      });
 
-    response.end(json);
+      response.end(json);
+    }
+    else
+      response.end('Error, no results from Database.');
   })
 })
 
@@ -124,14 +173,12 @@ app.post('/PostManual', function(request,response) {
   var Manual_Direction = request.body.Manual_Direction;
   var Manual_Fan_Speed = request.body.Manual_Fan_Speed;
   
-  if (typeof Manual_Direction !== 'undefined' && typeof Manual_Fan_Speed !== 'undefined')
-  {
+  if (typeof Manual_Direction !== 'undefined' && typeof Manual_Fan_Speed !== 'undefined') {
      var sql = "REPLACE INTO ManualData (entry_id,direction,fanSpeed) VALUES(1,?,?)";
      var inserts = [Manual_Direction,Manual_Fan_Speed];
 
      sql = mysql.format(sql,inserts);
-     database.query(sql, function(err,rows,fields)
-     {
+     database.query(sql, function(err,rows,fields) {
        if(!err)
          response.send('Success');
        else
@@ -152,22 +199,30 @@ app.get('/GetSchedule', function(request, response) {
   response.end(json);
 })
 
-app.get('/GetCurrentDaySchedule', function(request, response) {
+app.get('/GetCurrentSchedule', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});  
 
   var d = new Date();
   var currentDay = weekday[d.getDay()];
   var currentTime = d.getHours().toString() + ":" + d.getMinutes().toString() + ":" + d.getSeconds().toString();
   
-  database.query('SELECT beginTime,endTime,direction,fanSpeed FROM ScheduleData WHERE Day = currentDay AND Enabled = "Yes"  AND beginTime < currentTime AND endTime > currentTime LIMIT 1", function(err,rows,fields){
-    var scheduleData = new DayScheduleData(rows[0]['beginTime'],rows[0]['endTime'],rows[0]['direction'],rows[0]['fanSpeed']);
+  var sql = "Select beginTime,endTime,direction,fanSpeed FROM ScheduleData WHERE day = ? AND enabled = 'Yes' AND beginTime < ? AND endTime > ?";
+  var inserts = [currentDay,currentTime,currentTime];
 
-    var json = JSON.stringify({
-      data:scheduleData
-    }); 
-  }
+  sql = mysql.format(sql,inserts);
+  database.query(sql, function(err,rows,fields){
+    if (typeof rows !== 'undefined' && rows.length > 0) {
+      var scheduleData = new CurrentScheduleData(rows[0]['beginTime'],rows[0]['endTime'],rows[0]['direction'],rows[0]['fanSpeed']);
 
-  console.log(currentDay + " " + currentTime);
+      var json = JSON.stringify({
+        data:scheduleData
+      });
+
+      response.end(json);
+    }
+    else 
+      response.end('Error, no results from Database.');
+  })
 })
 
 app.post('/CreateSchedule', function(request, response){
@@ -181,19 +236,19 @@ app.post('/CreateSchedule', function(request, response){
 
   var success = true;
 
-  if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
+  var res = "Success";  
+
+  if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined') //&& (Day.includes("N") || Day.includes("Y")))
   {
     for (i = 0; i < Day.length; i++) { 
       if (Day.charAt(i) == "Y"){
-        var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,weekday[i],?)";
-        var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,Enabled];
+        var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,?,?)";
+        var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,weekday[i],Enabled];
       
         sql = mysql.format(sql,inserts);
-        database.query(sql, function(err,rows,fields)
-        {
-          if(err)
-          {
-            response.send('Database Error: ' + err);
+        database.query(sql, function(err,rows,fields) {
+          if(err) {
+            res = 'Database Error: ' + err;
             success = false;
           }
         });
@@ -201,23 +256,23 @@ app.post('/CreateSchedule', function(request, response){
     }
   }
   else
-    response.send('Error, data could not be parse properly');
+    res = "Error, data could not be parse properly";
         
   if (!success)
-    response.send('There was at least one Database Error.');
+    res = "'There was at least one Database Error.";
+
+  response.send(res);
 })
 
 app.post('/DeleteSchedule', function(request, response){
   var Schedule_Id = request.body.Schedule_Id;
 
-  if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined')
-  {
+  if (typeof Schedule_Id !== 'undefined') {
     var sql = "DELETE FROM ScheduleData WHERE schedule_id = ?";
     var inserts = [Schedule_Id];
 
     sql = mysql.format(sql,inserts);
-    database.query(sql, function(err,rows,fields)
-    {
+    database.query(sql, function(err,rows,fields) {
       if(!err)
         response.send('Success');
       else
@@ -232,13 +287,17 @@ app.get('/GetOneTemp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
   
   database.query('SELECT direction,lowSpeed,lowTemp,highSpeed,highTemp FROM OneTempData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
-    var oneTempData = new OneTempData(rows[0]['direction'],rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp']);
+    if (typeof rows !== 'undefined' && rows.length > 0) {
+      var oneTempData = new OneTempData(rows[0]['direction'],rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp']);
     
-    var json = JSON.stringify({
-      data:oneTempData
-    });
+      var json = JSON.stringify({
+        data:oneTempData
+      });
 
-    response.end(json);
+      response.end(json);
+    }
+    else
+      reponse.end('Error, no results from Database');
   })
 })
 
@@ -271,13 +330,17 @@ app.get('/GetTwoTemp', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
 
   database.query('SELECT lowSpeed,lowTemp,highSpeed,highTemp FROM TwoTempData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
-    var twoTempData = new TwoTempData(rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp']);
+    if (typeof rows !== 'undefined' && rows.length > 0) {
+      var twoTempData = new TwoTempData(rows[0]['lowSpeed'],rows[0]['lowTemp'],rows[0]['highSpeed'],rows[0]['highTemp']);
     
-    var json = JSON.stringify({
-      data:twoTempData
-    });
+      var json = JSON.stringify({
+        data:twoTempData
+      });
 
-    response.end(json)
+      response.end(json)
+    }
+    else
+      response.end('Error, no results from Database.');
   })
 })
 
