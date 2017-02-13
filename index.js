@@ -26,9 +26,12 @@ weekday[4] = "Thursday";
 weekday[5] = "Friday";
 weekday[6] = "Saturday";
 
-function OpMode(Mode){
-  this.Mode = Mode
+function OpMode(Mode,Power){
+  this.Mode = Mode;
+  this.Power = Power;
 }
+
+var power = true;
 
 function LocationData(Address, Latitude, Longitude){
   this.Address = Address;
@@ -82,7 +85,7 @@ app.get('/GetOp', function(request, response) {
   
   database.query('SELECT mode FROM OpData WHERE entry_id=1 LIMIT 1', function(err,rows,fields){
     if (typeof rows !== 'undefined' && rows.length > 0) {
-      var opMode = new OpMode(rows[0]['mode']);
+      var opMode = new OpMode(rows[0]['mode'],power);
 
       var json = JSON.stringify({
         data:opMode
@@ -109,6 +112,18 @@ app.post('/PostOp', function(request,response) {
       else
         response.send('Database error: ' + err);
     });
+  }
+  else
+    response.send('Error, data could not be parsed properly');
+})
+
+app.post('/PostPower', function(request,response) {
+  var pwr = request.body.Power;
+
+  if (typeof pwr !== 'undefined') {
+    power = pwr;
+
+    response.send('Success');
   }
   else
     response.send('Error, data could not be parsed properly');
@@ -192,11 +207,22 @@ app.post('/PostManual', function(request,response) {
 app.get('/GetSchedule', function(request, response) {
   response.writeHead(200, {"Content-Type": "application/json"});
 
-  var json = JSON.stringify({
-    //data:scheduleData
-  });
+  var schedules = new Array();
 
-  response.end(json);
+  database.query("SELECT schedule_id,TIME_FORMAT(beginTime,'%H:%i'),TIME_FORMAT(endTime,'%H:%i'),direction,fanSpeed,day,enabled FROM ScheduleData ORDER BY schedule_id", function(err,rows,fields){
+    if (rows) {
+      for (var row in rows) {
+        var scheduleData = new ScheduleData(rows[row]['schedule_id'],rows[row]['TIME_FORMAT(beginTime,\'%H\:%i\')'],rows[row]['TIME_FORMAT(endTime,\'%H\:%i\')'],rows[row]['direction'],rows[row]['fanSpeed'],rows[row]['day'],rows[row]['enabled']);
+
+        schedules.push(scheduleData);
+      }
+      var json = JSON.stringify({ data:schedules });
+
+      response.end(json);
+    }
+    else
+      response.end('Error, no results from Database.');
+  })
 })
 
 app.get('/GetCurrentSchedule', function(request, response) {
@@ -206,13 +232,13 @@ app.get('/GetCurrentSchedule', function(request, response) {
   var currentDay = weekday[d.getDay()];
   var currentTime = d.getHours().toString() + ":" + d.getMinutes().toString() + ":" + d.getSeconds().toString();
   
-  var sql = "Select beginTime,endTime,direction,fanSpeed FROM ScheduleData WHERE day = ? AND enabled = 'Yes' AND beginTime < ? AND endTime > ?";
+  var sql = "Select TIME_FORMAT(beginTime,'%H:%i'),TIME_FORMAT(endTime,'%H:%i'),direction,fanSpeed FROM ScheduleData WHERE day = ? AND enabled = 'Yes' AND beginTime < ? AND endTime > ?";
   var inserts = [currentDay,currentTime,currentTime];
 
   sql = mysql.format(sql,inserts);
   database.query(sql, function(err,rows,fields){
     if (typeof rows !== 'undefined' && rows.length > 0) {
-      var scheduleData = new CurrentScheduleData(rows[0]['beginTime'],rows[0]['endTime'],rows[0]['direction'],rows[0]['fanSpeed']);
+      var scheduleData = new CurrentScheduleData(rows[0]['TIME_FORMAT(beginTime,\'%H\:%i\')'],rows[0]['TIME_FORMAT(endTime,\'%H\:%i\')'],rows[0]['direction'],rows[0]['fanSpeed']);
 
       var json = JSON.stringify({
         data:scheduleData
@@ -226,7 +252,7 @@ app.get('/GetCurrentSchedule', function(request, response) {
 })
 
 app.post('/CreateSchedule', function(request, response){
-  var Schedule_Id = request.body.Schedule_Id;
+  var Schedule_ID = request.body.Schedule_ID;
   var Begin_Time = request.body.Begin_Time;
   var End_Time = request.body.End_Time;
   var Direction = request.body.Direction;
@@ -238,12 +264,12 @@ app.post('/CreateSchedule', function(request, response){
 
   var res = "Success";  
 
-  if (typeof Schedule_Id !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined') //&& (Day.includes("N") || Day.includes("Y")))
+  if (typeof Schedule_ID !== 'undefined' && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined' && (Day.includes("N") || Day.includes("Y")))
   {
     for (i = 0; i < Day.length; i++) { 
       if (Day.charAt(i) == "Y"){
         var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,?,?)";
-        var inserts = [Schedule_Id,Begin_Time,End_Time,Direction,Fan_Speed,weekday[i],Enabled];
+        var inserts = [Schedule_ID,Begin_Time,End_Time,Direction,Fan_Speed,weekday[i],Enabled];
       
         sql = mysql.format(sql,inserts);
         database.query(sql, function(err,rows,fields) {
@@ -257,19 +283,92 @@ app.post('/CreateSchedule', function(request, response){
   }
   else
     res = "Error, data could not be parse properly";
-        
-  if (!success)
-    res = "'There was at least one Database Error.";
 
   response.send(res);
 })
 
-app.post('/DeleteSchedule', function(request, response){
-  var Schedule_Id = request.body.Schedule_Id;
+app.post('/UpdateSchedule', function(request, response){
+  var Schedule_ID = request.body.Schedule_ID;
+  var Begin_Time = request.body.Begin_Time;
+  var End_Time = request.body.End_Time;
+  var Direction = request.body.Direction;
+  var Fan_Speed = request.body.Fan_Speed;
+  var Day = request.body.Day;
+  var Enabled = request.body.Enabled;
 
-  if (typeof Schedule_Id !== 'undefined') {
+  var success = true;
+
+  var res = "Success";  
+
+  if (typeof Schedule_ID !== 'undefined') {
     var sql = "DELETE FROM ScheduleData WHERE schedule_id = ?";
-    var inserts = [Schedule_Id];
+    var inserts = [Schedule_ID];
+
+    sql = mysql.format(sql,inserts);
+    database.query(sql, function(err,rows,fields) {
+      if(!err) {
+        res = 'Success';
+      }
+      else
+      {
+        success = false;
+        res = 'Database Error: ' + err;
+      }
+    });
+  }
+  else {
+    success = false;
+    res = 'Error, data could not be parse properly';
+  }
+	
+  if (success && typeof Begin_Time !== 'undefined' && typeof End_Time !== 'undefined' && typeof Direction !== 'undefined' && typeof Fan_Speed !== 'undefined' && typeof Day !== 'undefined' && typeof Enabled !== 'undefined' && (Day.includes("N") || Day.includes("Y")))
+  {
+    for (i = 0; i < Day.length; i++) { 
+      if (Day.charAt(i) == "Y"){
+        var sql = "INSERT INTO ScheduleData (schedule_id,beginTime,endTime,direction,fanSpeed,day,enabled) VALUES (?,?,?,?,?,?,?)";
+        var inserts = [Schedule_ID,Begin_Time,End_Time,Direction,Fan_Speed,weekday[i],Enabled];
+      
+        sql = mysql.format(sql,inserts);
+        database.query(sql, function(err,rows,fields) {
+          if(err) {
+            res = 'Database Error: ' + err;
+            success = false;
+          }
+        });
+      }
+    }
+  }
+  else
+    res = "Error, data could not be parse properly";
+
+  response.send(res);
+})
+
+app.post('/DisableSchedule', function(request, response){
+  var Schedule_ID = request.body.Schedule_ID;
+
+  if (typeof Schedule_ID !== 'undefined') {
+    var sql = "UPDATE ScheduleData SET enabled='No'  WHERE schedule_id = ?";
+    var inserts = [Schedule_ID];
+
+    sql = mysql.format(sql,inserts);
+    database.query(sql, function(err,rows,fields) {
+      if(!err)
+        response.send('Disabled Successfully');
+      else
+        response.send('Database Error: ' + err);
+    });
+  }  
+  else
+    response.send('Error, data could not be parsed properly');
+})
+
+app.post('/DeleteSchedule', function(request, response){
+  var Schedule_ID = request.body.Schedule_ID;
+
+  if (typeof Schedule_ID !== 'undefined') {
+    var sql = "DELETE FROM ScheduleData WHERE schedule_id = ?";
+    var inserts = [Schedule_ID];
 
     sql = mysql.format(sql,inserts);
     database.query(sql, function(err,rows,fields) {
